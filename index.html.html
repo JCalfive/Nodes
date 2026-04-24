@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>John's Node Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #080c14;
+  --card: #0d1320;
+  --card2: #111827;
+  --border: #1e2d45;
+  --accent: #00e5a0;
+  --accent2: #0099ff;
+  --accent3: #ff6b35;
+  --text: #e2eaf5;
+  --dim: #6b7fa3;
+  --muted: #3a4a66;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #a855f7;
+}
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 10% 0%, rgba(0,229,160,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 90% 100%, rgba(0,153,255,0.07) 0%, transparent 60%);
+}
+
+/* ── HEADER ─────────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.4rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,12,20,0.9);
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.logo { display: flex; align-items: center; gap: .8rem; }
+.logo-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.logo-text { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
+.logo-text span { color: var(--accent); }
+.header-stats { display: flex; gap: 2rem; }
+.hstat { text-align: right; }
+.hstat-val { font-family: 'DM Mono', monospace; font-size: 1.1rem; font-weight: 500; color: var(--accent); }
+.hstat-label { font-size: .7rem; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+
+/* ── MAIN ─────────────────────────────────── */
+.main { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* ── TABS ─────────────────────────────────── */
+.tabs { display: flex; gap: .5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.tab {
+  padding: .5rem 1.2rem; border-radius: 6px; font-size: .8rem;
+  font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  cursor: pointer; border: 1px solid var(--border);
+  background: transparent; color: var(--dim); transition: all .2s;
+}
+.tab.active, .tab:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+/* ── SECTION HEADER ─────────────────────────────────── */
+.section-header {
+  display: flex; align-items: center; gap: 1rem;
+  margin: 2rem 0 1rem;
+}
+.section-title { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.section-line { flex: 1; height: 1px; background: var(--border); }
+.section-count {
+  font-family: 'DM Mono', monospace; font-size: .7rem;
+  color: var(--accent); background: rgba(0,229,160,.1);
+  padding: .2rem .6rem; border-radius: 20px; border: 1px solid rgba(0,229,160,.2);
+}
+
+/* ── NODE GRID ─────────────────────────────────── */
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+}
+
+/* ── NODE CARD ─────────────────────────────────── */
+.node-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  transition: border-color .2s, transform .15s;
+  position: relative;
+  overflow: hidden;
+}
+.node-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-accent, var(--accent));
+  opacity: .6;
+}
+.node-card:hover { border-color: var(--muted); transform: translateY(-2px); }
+.node-card.running { --card-accent: var(--accent); }
+.node-card.pending { --card-accent: var(--amber); }
+.node-card.new { --card-accent: var(--accent2); }
+
+.node-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .8rem; }
+.node-name { font-size: 1rem; font-weight: 700; line-height: 1.2; }
+.node-type { font-size: .68rem; color: var(--dim); margin-top: .15rem; }
+.node-badge {
+  font-size: .62rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; padding: .2rem .55rem;
+  border-radius: 4px; white-space: nowrap;
+}
+.badge-running { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.badge-pending { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid rgba(245,158,11,.25); }
+.badge-new { background: rgba(0,153,255,.15); color: var(--accent2); border: 1px solid rgba(0,153,255,.2); }
+.badge-install { background: rgba(168,85,247,.15); color: var(--purple); border: 1px solid rgba(168,85,247,.25); }
+
+.node-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .7rem; }
+.node-pill {
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  background: var(--card2); border: 1px solid var(--border);
+  color: var(--dim); padding: .2rem .55rem; border-radius: 20px;
+}
+.node-pill.token { color: var(--accent); border-color: rgba(0,229,160,.2); }
+
+.node-earnings {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: .7rem; border-top: 1px solid var(--border);
+}
+.node-est { font-size: .68rem; color: var(--dim); }
+.node-est span { color: var(--text); font-family: 'DM Mono', monospace; font-weight: 500; }
+
+.node-input-row { display: flex; gap: .5rem; margin-top: .6rem; align-items: center; }
+.node-input {
+  flex: 1; background: var(--card2); border: 1px solid var(--border);
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: .8rem;
+  padding: .3rem .6rem; border-radius: 6px; outline: none;
+  transition: border-color .2s;
+}
+.node-input:focus { border-color: var(--accent); }
+.node-input::placeholder { color: var(--muted); }
+.save-btn {
+  background: var(--accent); color: #000; border: none; font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: .7rem; padding: .3rem .7rem;
+  border-radius: 5px; cursor: pointer; transition: opacity .2s;
+  white-space: nowrap;
+}
+.save-btn:hover { opacity: .85; }
+
+/* ── DASHBOARD TOP STATS ─────────────────────────────────── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.1rem 1.2rem;
+}
+.stat-label { font-size: .68rem; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .4rem; }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 1.5rem; font-weight: 500; color: var(--accent); }
+.stat-sub { font-size: .7rem; color: var(--dim); margin-top: .2rem; }
+
+/* ── INSTALL GUIDE ─────────────────────────────────── */
+.install-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem;
+}
+.install-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
+.install-name { font-size: 1rem; font-weight: 700; }
+.install-steps { list-style: none; }
+.install-steps li {
+  display: flex; gap: .8rem; padding: .4rem 0;
+  border-bottom: 1px solid var(--border); font-size: .82rem; color: var(--dim);
+  align-items: flex-start;
+}
+.install-steps li:last-child { border-bottom: none; }
+.step-num {
+  font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--accent);
+  background: rgba(0,229,160,.1); border: 1px solid rgba(0,229,160,.2);
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.install-url {
+  font-family: 'DM Mono', monospace; font-size: .72rem;
+  color: var(--accent2); background: rgba(0,153,255,.08);
+  padding: .1rem .4rem; border-radius: 4px; border: 1px solid rgba(0,153,255,.2);
+  word-break: break-all;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────── */
+@media(max-width:640px){
+  .header { padding: 1rem; flex-wrap: wrap; gap: .8rem; }
+  .header-stats { gap: 1rem; }
+  .main { padding: 1rem .8rem 3rem; }
+  .hstat-val { font-size: .9rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-text">John's <span>Node</span> Dashboard</div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-val" id="hdr-nodes">0</div>
+      <div class="hstat-label">Nodes</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="hdr-monthly">£0</div>
+      <div class="hstat-label">Est/Month</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('all',this)">All Nodes</div>
+    <div class="tab" onclick="showTab('running',this)">✅ Running</div>
+    <div class="tab" onclick="showTab('new',this)">🆕 New to Add</div>
+    <div class="tab" onclick="showTab('install',this)">📋 Install Guide</div>
+    <div class="tab" onclick="showTab('earnings',this)">💰 Earnings Log</div>
+  </div>
+
+  <!-- ALL / RUNNING / NEW tabs content -->
+  <div id="tab-all">
+    <div id="stats-row" class="stats-row"></div>
+    <div id="sections-container"></div>
+  </div>
+
+  <!-- INSTALL GUIDE -->
+  <div id="tab-install" style="display:none">
+    <div id="install-list"></div>
+  </div>
+
+  <!-- EARNINGS LOG -->
+  <div id="tab-earnings" style="display:none">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+      <div style="font-size:.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem;">Log a Payout</div>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
+        <select id="log-node" style="flex:1;min-width:140px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:.85rem;padding:.5rem .8rem;border-radius:8px;outline:none;"></select>
+        <input id="log-amount" type="number" placeholder="Amount £" step="0.01"
+          style="width:120px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:.85rem;padding:.5rem .8rem;border-radius:8px;outline:none;">
+        <input id="log-date" type="date"
+          style="background:var(--card2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:.85rem;padding:.5rem .8rem;border-radius:8px;outline:none;">
+        <button onclick="logPayout()" style="background:var(--accent);color:#000;border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;">Log Payout</button>
+      </div>
+    </div>
+    <div id="earnings-list"></div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  NODE DATA
+// ════════════════════════════════════════════════
+const NODES = [
+  // ── ALREADY RUNNING ──────────────────────────
+  { id:'presearch',   name:'Presearch',      cat:'PC Node',      status:'running', token:'PRE',    wallet:'MetaMask',  uses:'Bandwidth',          earn:'£5–£10',  url:'https://dashboard.presearch.com',         desc:'Search engine node — earns PRE tokens for each search routed through your node.' },
+  { id:'titan',       name:'Titan Network',  cat:'PC Node',      status:'running', token:'TNT3',   wallet:'MetaMask',  uses:'Bandwidth+Storage',  earn:'£5–£15',  url:'https://test4.titannet.io/dashboard',      desc:'Decentralised cloud storage — share spare bandwidth and storage for TNT3 tokens.' },
+  { id:'aioz',        name:'AIOZ Network',   cat:'PC Node',      status:'running', token:'AIOZ',   wallet:'MetaMask',  uses:'Storage+AI+CDN',     earn:'£10–£25', url:'https://aioz.network/dashboard',          desc:'Multi-purpose node: streaming CDN, AI compute, and storage all in one. Strong earner.' },
+  { id:'grass-pc',    name:'Grass Desktop',  cat:'PC Node',      status:'running', token:'GRASS',  wallet:'Phantom',   uses:'Bandwidth',          earn:'Pts',     url:'https://app.getgrass.io/dashboard',        desc:'Shares idle bandwidth to AI scrapers. Earns GRASS points redeemable for tokens.' },
+  { id:'repocket',    name:'Repocket',       cat:'PC Bandwidth', status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£3–£8',   url:'https://app.repocket.com/dashboard',       desc:'Bandwidth sharing — pays out in USD to PayPal. Simple install, runs silently.' },
+  { id:'pktstream',   name:'PacketStream',   cat:'PC Bandwidth', status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£3–£8',   url:'https://packetstream.io/dashboard',        desc:'Residential proxy network. Earns per GB of bandwidth shared.' },
+  { id:'bitping',     name:'Bitping',        cat:'PC Bandwidth', status:'running', token:'USD',    wallet:'PayPal',    uses:'Network Monitoring', earn:'£2–£6',   url:'https://app.bitping.com/dashboard',        desc:'Network uptime monitoring node. Low resource use, steady payout.' },
+  { id:'honeygain',   name:'Honeygain',      cat:'Phone App',    status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£3–£8',   url:'https://dashboard.honeygain.com',          desc:'Phone bandwidth sharing. One of the oldest and most reliable earners.' },
+  { id:'earnapp',     name:'EarnApp',        cat:'Phone App',    status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£2–£6',   url:'https://earnapp.com/dashboard',            desc:'By Bright Data. Shares bandwidth, pays PayPal. Consistent daily drip.' },
+  { id:'traffmon',    name:'Traffmonetizer', cat:'Phone App',    status:'running', token:'Credits',wallet:'PayPal',    uses:'Bandwidth',          earn:'£2–£5',   url:'https://app.traffmonetizer.com',           desc:'Bandwidth monetiser. Lightweight, runs in background on phone.' },
+  { id:'bytelixir',   name:'ByteLixir',      cat:'Phone App',    status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£2–£5',   url:'https://bytelixir.com/dashboard',          desc:'Newer bandwidth sharing app — growing network, decent passive earn.' },
+  { id:'proxyrack',   name:'ProxyRack',      cat:'Phone App',    status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£2–£5',   url:'https://peer.proxyrack.com/dashboard',     desc:'Residential proxy network. Install on phone, earn per GB.' },
+  { id:'earnfm',      name:'Earn.FM',        cat:'Phone App',    status:'running', token:'USD',    wallet:'PayPal',    uses:'Bandwidth',          earn:'£1–£3',   url:'https://earn.fm/dashboard',                desc:'Passive bandwidth app. Lower earner but zero effort once set up.' },
+
+  // ── NEW — ADD THESE ──────────────────────────
+
+  { id:'koii',        name:'Koii Network',   cat:'PC Node',      status:'new',     token:'KOII',   wallet:'Koii Wallet',uses:'CPU+Storage',      earn:'£3–£10',  url:'https://www.koii.network/nodes',           desc:'People-powered AI supercomputer. Install the Koii Node desktop app, pick tasks from the dashboard, earn KOII tokens for compute jobs. New tasks ship weekly.',
+    steps:['Go to koii.network/nodes','Download the Koii Desktop Node for Windows','Create or import a Koii wallet (in-app, free)','Open the task marketplace and enable tasks','Earnings appear in your wallet automatically'] },
+
+  { id:'minionlab',  name:'MinionLab',      cat:'PC Extension', status:'new',     token:'Points', wallet:'In-app',    uses:'Bandwidth+Browsing',earn:'Pts',     url:'https://minionlab.ai',                     desc:'Chrome extension — runs AI data collection tasks while you browse. No install beyond the extension. Earns points redeemable for rewards.',
+    steps:['Go to minionlab.ai and sign up','Install the Chrome extension','Enable Minions from the dashboard','Leave Chrome running — earns passively in the background','Redeem points in the rewards section'] },
+
+  { id:'meson',       name:'Meson Network',  cat:'PC Node',      status:'new',     token:'MSN',    wallet:'MetaMask',  uses:'Bandwidth CDN',     earn:'£5–£12',  url:'https://dashboard.meson.network',          desc:'CDN bandwidth marketplace. Runs as a lightweight node, routes web traffic through your connection, earns MSN tokens. Well-established project.',
+    steps:['Sign up at meson.network','Download and install the Meson node for Windows','Connect your MetaMask wallet','Start the node service — auto-runs on startup','Track earnings in the Meson dashboard'] },
+
+  { id:'flux',        name:'Flux',           cat:'PC Node',      status:'new',     token:'FLUX',   wallet:'MetaMask',  uses:'CPU+RAM',           earn:'£10–£20', url:'https://home.runonflux.io',                desc:'Decentralised cloud infrastructure. Run a Flux node to earn FLUX tokens. Higher compute use but one of the best-established DePIN earners.',
+    steps:['Go to home.runonflux.io and register','Download FluxEdge (the lightweight Windows client)','Sign in and link your MetaMask wallet','Start contributing compute — node registers automatically','Monitor earnings in the FluxEdge dashboard'] },
+
+  { id:'idriss',      name:'io.net',         cat:'PC Node',      status:'new',     token:'IO',     wallet:'Phantom',   uses:'GPU Compute',       earn:'£5–£20',  url:'https://worker.io.net',                    desc:'GPU compute marketplace — great for your RX 7800 XT. Earns IO tokens for AI compute jobs routed to your GPU.',
+    steps:['Go to worker.io.net and create account','Download the IO Worker for Windows','Connect your Phantom (Solana) wallet','Select your GPU in the dashboard','Node earns IO tokens automatically when jobs come in'] },
+
+  { id:'pipe',        name:'Pipe Network',   cat:'PC Node',      status:'new',     token:'PIPE',   wallet:'Phantom',   uses:'Bandwidth CDN',     earn:'£3–£10',  url:'https://pipecdn.app',                      desc:'Solana-based CDN node. Share bandwidth as a cache node, earn PIPE tokens. Early-stage but growing fast with Solana backing.',
+    steps:['Go to pipecdn.app and sign up','Download the Pipe Guardian node for Windows','Connect your Phantom wallet','Register your node and start it','Check the dashboard for PIPE token rewards'] },
+
+  { id:'nodepay',     name:'NodePay',        cat:'PC Extension', status:'new',     token:'NC',     wallet:'In-app',    uses:'Bandwidth',         earn:'Pts',     url:'https://app.nodepay.ai',                   desc:'Chrome extension that shares bandwidth for AI training data. Earns NC (NodePay Credits) passively while Chrome is open. Simple one-click setup.',
+    steps:['Go to app.nodepay.ai and register','Install the NodePay Chrome extension','Activate it from the extension toolbar','Leave Chrome open — earns automatically','Redeem NC credits from the rewards page'] },
+
+  { id:'gradient',    name:'Gradient Network',cat:'PC Extension',status:'new',     token:'Points', wallet:'In-app',    uses:'Bandwidth+Compute', earn:'Pts',     url:'https://app.gradient.network',             desc:'Chrome extension — contributes idle compute and bandwidth to an AI training network. Popular, large network, frequent reward cycles.',
+    steps:['Go to app.gradient.network','Create a free account','Install the Gradient Chrome extension','Enable Sentry Node mode from the extension','Earns points passively — check dashboard weekly'] },
+
+  { id:'dexe',        name:'DePINed',        cat:'PC Node',      status:'new',     token:'DPN',    wallet:'MetaMask',  uses:'Bandwidth',         earn:'£2–£6',   url:'https://depined.org',                      desc:'Decentralised bandwidth node with DPN tokens. Free install, low resource use. Growing community.',
+    steps:['Go to depined.org and sign up','Download the DePINed Windows desktop app','Connect MetaMask and register your node','Start the node — it runs as a background service','Monitor DPN token earnings in the dashboard'] },
+
+  { id:'teneo',       name:'Teneo',          cat:'PC Extension', status:'new',     token:'TENEO',  wallet:'In-app',    uses:'Bandwidth',         earn:'Pts',     url:'https://teneo.pro',                        desc:'Browser extension that earns Teneo points — a popular airdrop community. Free, lightweight, runs passively while browsing.',
+    steps:['Go to teneo.pro and create account','Install the Teneo browser extension','Connect it to your account','Browse normally — points accumulate automatically','Track point balance in the Teneo dashboard'] },
+
+  { id:'oasis',       name:'Oasis Network',  cat:'PC Node',      status:'new',     token:'ROSE',   wallet:'MetaMask',  uses:'CPU+Bandwidth',     earn:'£5–£15',  url:'https://docs.oasis.io/node/run-your-node', desc:'Privacy-focused blockchain node. Earns ROSE tokens for validating transactions. More technical setup but solid rewards.',
+    steps:['Read the quick-start at docs.oasis.io','Install the Oasis Node binary for Windows','Configure your node with MetaMask','Register as a delegator (no large stake needed for light node)','Monitor via the Oasis Explorer'] },
+
+  { id:'storj',       name:'Storj',          cat:'PC Node',      status:'new',     token:'STORJ',  wallet:'MetaMask',  uses:'Hard Drive Space',  earn:'£3–£8',   url:'https://www.storj.io/host-a-node',         desc:'Decentralised cloud storage. Share unused hard drive space, earn STORJ tokens per GB stored and downloaded. Works well with any spare HDD.',
+    steps:['Go to storj.io/host-a-node','Download Storj Node for Windows','Run the setup wizard — picks your storage folder and sets limits','Open firewall port 28967 (it guides you)','Earnings appear monthly in STORJ tokens to MetaMask'] },
+];
+
+// ════════════════════════════════════════════════
+//  STATE & STORAGE
+// ════════════════════════════════════════════════
+let earnings = JSON.parse(localStorage.getItem('node_earnings') || '{}');
+let notes    = JSON.parse(localStorage.getItem('node_notes')    || '{}');
+let payouts  = JSON.parse(localStorage.getItem('node_payouts')  || '[]');
+
+function save(){ localStorage.setItem('node_earnings', JSON.stringify(earnings)); localStorage.setItem('node_notes', JSON.stringify(notes)); }
+function savePay(){ localStorage.setItem('node_payouts', JSON.stringify(payouts)); }
+
+// ════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════
+function buildAll(){
+  buildStats();
+  buildSections();
+  buildInstallGuide();
+  buildEarningsLog();
+  populateLogSelect();
+  updateHeader();
+}
+
+function buildStats(){
+  const total = NODES.length;
+  const running = NODES.filter(n=>n.status==='running').length;
+  const newNodes = NODES.filter(n=>n.status==='new').length;
+  const totalPaid = payouts.reduce((a,p)=>a+parseFloat(p.amount||0),0);
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Nodes</div>
+      <div class="stat-val">${total}</div>
+      <div class="stat-sub">${running} running · ${newNodes} to add</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Est. Monthly Min</div>
+      <div class="stat-val" style="color:var(--accent)">£${calcMin()}</div>
+      <div class="stat-sub">Conservative estimate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Est. Monthly Max</div>
+      <div class="stat-val" style="color:var(--accent2)">£${calcMax()}</div>
+      <div class="stat-sub">Optimistic estimate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Logged</div>
+      <div class="stat-val" style="color:var(--accent3)">£${totalPaid.toFixed(2)}</div>
+      <div class="stat-sub">${payouts.length} payouts recorded</div>
+    </div>
+  `;
+}
+
+function calcMin(){
+  return NODES.reduce((acc,n)=>{ const m=n.earn.match(/£(\d+)/); return acc+(m?parseInt(m[1]):0); },0);
+}
+function calcMax(){
+  return NODES.reduce((acc,n)=>{ const m=n.earn.match(/£(\d+)–£(\d+)/); return acc+(m?parseInt(m[2]):0); },0);
+}
+
+function buildSections(){
+  const cats = [
+    { label:'PC Nodes — Running',  filter: n=>n.cat==='PC Node' && n.status==='running', color:'var(--accent)' },
+    { label:'PC Bandwidth — Running', filter: n=>n.cat==='PC Bandwidth' && n.status==='running', color:'var(--accent)' },
+    { label:'Phone Apps — Running', filter: n=>n.cat==='Phone App' && n.status==='running', color:'var(--accent)' },
+    { label:'New PC Nodes — Install These', filter: n=>n.status==='new' && n.cat==='PC Node', color:'var(--accent2)' },
+    { label:'New Chrome Extensions — Install These', filter: n=>n.status==='new' && n.cat==='PC Extension', color:'var(--purple)' },
+  ];
+
+  let html = '';
+  cats.forEach(c=>{
+    const nodes = NODES.filter(c.filter);
+    if(!nodes.length) return;
+    html += `
+      <div class="section-header">
+        <div class="section-title" style="color:${c.color}">${c.label}</div>
+        <div class="section-line"></div>
+        <div class="section-count">${nodes.length}</div>
+      </div>
+      <div class="node-grid">${nodes.map(nodeCard).join('')}</div>
+    `;
+  });
+  document.getElementById('sections-container').innerHTML = html;
+}
+
+function nodeCard(n){
+  const bal = earnings[n.id] || '';
+  const note = notes[n.id] || '';
+  const isNew = n.status==='new';
+  const badgeClass = n.status==='running' ? 'badge-running' : n.status==='new' ? 'badge-new' : 'badge-pending';
+  const badgeText  = n.status==='running' ? '✅ Running' : '🆕 Add This';
+
+  return `
+    <div class="node-card ${n.status}" style="${isNew?'opacity:.92':''}">
+      <div class="node-top">
+        <div>
+          <div class="node-name">${n.name}</div>
+          <div class="node-type">${n.cat} · ${n.uses}</div>
+        </div>
+        <div class="node-badge ${badgeClass}">${badgeText}</div>
+      </div>
+      <div class="node-row">
+        <span class="node-pill token">${n.token}</span>
+        <span class="node-pill">${n.wallet}</span>
+      </div>
+      <div style="font-size:.73rem;color:var(--dim);margin-bottom:.7rem;line-height:1.4">${n.desc}</div>
+      <div class="node-earnings">
+        <div class="node-est">Est: <span>${n.earn}/mo</span></div>
+        ${isNew
+          ? `<a href="${n.url}" target="_blank" style="font-size:.7rem;color:var(--accent2);text-decoration:none;font-weight:700;">🔗 Install →</a>`
+          : `<a href="${n.url}" target="_blank" style="font-size:.7rem;color:var(--accent);text-decoration:none;font-weight:700;">Dashboard →</a>`
+        }
+      </div>
+      ${!isNew ? `
+      <div class="node-input-row">
+        <input class="node-input" id="bal-${n.id}" type="number" step="0.01"
+          placeholder="Balance £" value="${bal}"
+          onchange="earnings['${n.id}']=this.value;save();updateHeader()">
+        <input class="node-input" id="note-${n.id}" type="text"
+          placeholder="Note" value="${note}"
+          onchange="notes['${n.id}']=this.value;save()" style="flex:2">
+      </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function buildInstallGuide(){
+  const newNodes = NODES.filter(n=>n.status==='new');
+  document.getElementById('install-list').innerHTML = newNodes.map(n=>`
+    <div class="install-card">
+      <div class="install-header">
+        <div class="install-name">${n.name} <span style="color:var(--dim);font-size:.8rem;font-weight:400">· ${n.cat}</span></div>
+        <div style="display:flex;gap:.8rem;align-items:center">
+          <span style="font-family:'DM Mono',monospace;font-size:.75rem;color:var(--accent)">${n.earn}/mo</span>
+          <a href="${n.url}" target="_blank" style="background:var(--accent2);color:#fff;text-decoration:none;font-size:.7rem;font-weight:700;padding:.3rem .7rem;border-radius:5px;">Open Site →</a>
+        </div>
+      </div>
+      <div style="font-size:.78rem;color:var(--dim);margin-bottom:.8rem;">${n.desc}</div>
+      <ul class="install-steps">
+        ${(n.steps||['Visit the website and create a free account','Download and install the software','Connect your wallet','Start the node or extension','Monitor earnings in the dashboard']).map((s,i)=>`
+          <li>
+            <span class="step-num">${i+1}</span>
+            <span>${s}</span>
+          </li>
+        `).join('')}
+      </ul>
+      <div style="margin-top:.6rem;"><span class="install-url">${n.url}</span></div>
+    </div>
+  `).join('');
+}
+
+function buildEarningsLog(){
+  const sorted = [...payouts].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('earnings-list').innerHTML = sorted.length ? sorted.map(p=>`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.9rem 1.2rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:700;font-size:.9rem">${p.node}</div>
+        <div style="font-size:.72rem;color:var(--dim)">${p.date}</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:1.1rem;color:var(--green)">+£${parseFloat(p.amount).toFixed(2)}</div>
+    </div>
+  `).join('') : `<div style="text-align:center;color:var(--dim);padding:3rem;font-size:.85rem;">No payouts logged yet. Use the form above to record when you cash out.</div>`;
+}
+
+function populateLogSelect(){
+  const sel = document.getElementById('log-node');
+  sel.innerHTML = NODES.map(n=>`<option value="${n.name}">${n.name}</option>`).join('');
+}
+
+function logPayout(){
+  const node = document.getElementById('log-node').value;
+  const amount = document.getElementById('log-amount').value;
+  const date = document.getElementById('log-date').value || new Date().toISOString().slice(0,10);
+  if(!amount) return;
+  payouts.push({ node, amount, date });
+  savePay();
+  document.getElementById('log-amount').value='';
+  buildEarningsLog();
+  buildStats();
+  updateHeader();
+}
+
+function updateHeader(){
+  const total = Object.values(earnings).reduce((a,v)=>a+parseFloat(v||0),0);
+  document.getElementById('hdr-nodes').textContent = NODES.length;
+  document.getElementById('hdr-monthly').textContent = `£${total.toFixed(2)}`;
+}
+
+function showTab(name, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['all','install','earnings'].forEach(t=>{
+    const el = document.getElementById(`tab-${t}`);
+    if(el) el.style.display = t===name ? '' : 'none';
+  });
+  if(name==='running'){
+    // filter view
+    document.getElementById('tab-all').style.display='';
+    filterView('running');
+  } else if(name==='new'){
+    document.getElementById('tab-all').style.display='';
+    filterView('new');
+  } else if(name==='all'){
+    document.getElementById('tab-all').style.display='';
+    filterView('all');
+  }
+}
+
+function filterView(filter){
+  // simple approach: rebuild sections with filter
+  if(filter==='all'){ buildSections(); return; }
+  const nodes = NODES.filter(n=>n.status===filter);
+  const grid = `<div class="node-grid">${nodes.map(nodeCard).join('')}</div>`;
+  document.getElementById('sections-container').innerHTML = `
+    <div class="section-header">
+      <div class="section-title">${filter==='running'?'Currently Running':'Ready to Install'}</div>
+      <div class="section-line"></div>
+      <div class="section-count">${nodes.length}</div>
+    </div>${grid}`;
+}
+
+// Set today's date on load
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
+  buildAll();
+});
+</script>
+</body>
+</html>
